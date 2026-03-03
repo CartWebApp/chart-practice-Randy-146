@@ -1,9 +1,6 @@
 // change this to reference the dataset you chose to work with.
 import { gameSales as chartData } from "./data/gameSales.js";
 
-Chart.defaults.color = "#ffffff";
-Chart.defaults.borderColor = "rgba(255,255,255,0.2)";
-
 // --- DOM helpers ---
 const yearSelect = document.getElementById("yearSelect");
 const titleSelect = document.getElementById("titleSelect");
