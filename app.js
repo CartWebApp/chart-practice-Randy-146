@@ -5,6 +5,7 @@ import { gameSales as chartData } from "./data/gameSales.js";
 const yearSelect = document.getElementById("yearSelect");
 const titleSelect = document.getElementById("titleSelect");
 const metricSelect = document.getElementById("metricSelect");
+const genreselect = document.getElementById("genreSelect");
 const chartTypeSelect = document.getElementById("chartType");
 const renderBtn = document.getElementById("renderBtn");
 const dataPreview = document.getElementById("dataPreview");
@@ -15,12 +16,24 @@ let currentChart = null;
 // --- Populate dropdowns from data ---
 const year = [...new Set(chartData.map(r => r.year))];
 const title = [...new Set(chartData.map(r => r.title))];
+const genre = [...new Set(chartData.map(r => r.genre))];
+const unitsM = [...new Set(chartData.map(r => r.unitsM))];
+const revenueUSd = [...new Set(chartData.map(r => r.revenueUSD))];
+const priceUSd = [...new Set(chartData.map(r => r.priceUSD))];
+const review = [...new Set(chartData.map(r => r.review))];
 
-year.forEach(m => yearSelect.add(new Option(m, m)));
+year.forEach(y => yearSelect.add(new Option(m, m)));
 title.forEach(h => titleSelect.add(new Option(h, h)));
+genre.forEach(g => genreselect.add(new Option( g, g)));
+unitsM.forEach(y => yearSelect.add(new Option(u, u)));
+revenueUSD.forEach(h => titleSelect.add(new Option(r, r)));
+priceUSd.forEach(g => genreselect.add(new Option(pp, p)));
+review.forEach(g => genreselect.add(new Option( re, re)));
 
 yearSelect.value = year[0];
 titleSelect.value = title[0];
+genreselect.value =genre[0];
+
 
 // Preview first 6 rows
 dataPreview.textContent = JSON.stringify(chartData.slice(0, 6), null, 2);
@@ -31,6 +44,7 @@ renderBtn.addEventListener("click", () => {
   const year = yearSelect.value;
   const title = titleSelect.value;
   const metric = metricSelect.value;
+  const genre = genreSelect.value;
 
   // Destroy old chart if it exists (common Chart.js gotcha)
   if (currentChart) currentChart.destroy();
@@ -43,8 +57,8 @@ renderBtn.addEventListener("click", () => {
 
 // --- Students: you’ll edit / extend these functions ---
 function buildConfig(type, { year, title, metric }) {
-  if (type === "bar") return barBytitle(year, metric);
-  if (type === "line") return lineOverTime(title, [metric]);
+  if (type === "bar") return barBytitle(genre, metric);
+  if (type === "line") return lineOverTime(title, metric);
   if (type === "scatter") return scattermetricVsTemp(title);
   if (type === "doughnut") return doughnutrevenueUSDandmetric(year, title, metric);
   if (type === "radar") return radarComparetitles(year);
@@ -52,17 +66,16 @@ function buildConfig(type, { year, title, metric }) {
 }
 
 // Task A: BAR — compare titles for a given year
-function barBytitle(year, metric) {
-  const rows = chartData.filter(r => r.year === Number(year));
+function barBytitle(genre, metric) {
+  const rows = chartData.filter(r => r.genre === genre);
   const labels = rows.map(r => r.title);
-  const values = rows.map(r => r[metric]);
-
+  const values = rows.map(r => r.metric);
   return {
     type: "bar",
     data: {
       labels,
       datasets: [{
-        label: `${metric} in ${year}`,
+        label: `${metric} in ${genreSelect.value}`,
         data: values,
         backgroundColor: "rgba(54, 162, 235, 0.7)"
       }]
@@ -70,11 +83,11 @@ function barBytitle(year, metric) {
     options: {
       responsive: true,
       plugins: {
-        title: { display: true, text: `Title comparison (${year})` }
+        title: { display: true, text: `Title comparison (${genreSelect.value})` }
       },
       scales: {
         y: { beginAtZero: true, title: { display: true, text: metric } },
-        x: { title: { display: true, text: "Title" } }
+        x: { title: { display: true, text: "Genre" } }
       },
     }
   };
@@ -82,14 +95,16 @@ function barBytitle(year, metric) {
 
 
 // Task B: LINE — trend over time for one title (2 datasets)
-function lineOverTime(title, metrics) {
-  const rows = chartData.filter(r => r.title === title);
+function lineOverTime(revenueUSD, metric) {
+  console.log(revenuUSD, metric)
+  const rows = chartData.filter(r => r.plublisher === publisher);
 
   const labels = rows.map(r => r.year);
 
-  const datasets = metrics.map(m => ({
-    label: m,
+  const datasets = chartData.map(m => ({
+    label: m.year,
     data: rows.map(r => r[m])
+  
   }));
 
   return {
@@ -101,8 +116,8 @@ function lineOverTime(title, metrics) {
         title: { display: true, text: `Trends over time: ${title}` }
       },
       scales: {
-        y: { title: { display: true, text: "Review Score" } },
-        x: { title: { display: true, text: "Revenue" } }
+        y: { title: { display: true, text: metric } },
+        x: { title: { display: true, text: "Title" } }
       }
     }
   };
