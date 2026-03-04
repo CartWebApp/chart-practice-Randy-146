@@ -17,23 +17,17 @@ let currentChart = null;
 const year = [...new Set(chartData.map(r => r.year))];
 const title = [...new Set(chartData.map(r => r.title))];
 const genre = [...new Set(chartData.map(r => r.genre))];
-const unitsM = [...new Set(chartData.map(r => r.unitsM))];
-const revenueUSd = [...new Set(chartData.map(r => r.revenueUSD))];
-const priceUSd = [...new Set(chartData.map(r => r.priceUSD))];
-const review = [...new Set(chartData.map(r => r.review))];
+const metric = [...new Set(chartData.map(r => r.metric))];
 
-year.forEach(y => yearSelect.add(new Option(m, m)));
+year.forEach(y => yearSelect.add(new Option(y, y)));
 title.forEach(h => titleSelect.add(new Option(h, h)));
-genre.forEach(g => genreselect.add(new Option( g, g)));
-unitsM.forEach(y => yearSelect.add(new Option(u, u)));
-revenueUSD.forEach(h => titleSelect.add(new Option(r, r)));
-priceUSd.forEach(g => genreselect.add(new Option(pp, p)));
-review.forEach(g => genreselect.add(new Option( re, re)));
+genre.forEach(g => genreSelect.add(new Option( g, g)));
+metric.forEach(m => metricSelect.add(new Option(m, m)));
 
 yearSelect.value = year[0];
 titleSelect.value = title[0];
-genreselect.value =genre[0];
-
+genreSelect.value =genre[0];
+metricSelect.value = metric[0];
 
 // Preview first 6 rows
 dataPreview.textContent = JSON.stringify(chartData.slice(0, 6), null, 2);
@@ -50,18 +44,18 @@ renderBtn.addEventListener("click", () => {
   if (currentChart) currentChart.destroy();
 
   // Build chart config based on type
-  const config = buildConfig(chartType, {year, title, metric});
+  const config = buildConfig(chartType, {year, title, metric, genre});
 
   currentChart = new Chart(canvas, config);
 });
 
 // --- Students: you’ll edit / extend these functions ---
-function buildConfig(type, { year, title, metric }) {
+function buildConfig(type, { year, title, metric, genre }) {
   if (type === "bar") return barBytitle(genre, metric);
-  if (type === "line") return lineOverTime(title, metric);
-  if (type === "scatter") return scattermetricVsTemp(title);
-  if (type === "doughnut") return doughnutrevenueUSDandmetric(year, title, metric);
-  if (type === "radar") return radarComparetitles(year);
+  if (type === "line") return lineOverTime(year, metric);
+  if (type === "scatter") return scatterreviewScoreVsRevenue(title);
+  if (type === "doughnut") return doughnutRevenueByRegion(year, title);
+  if (type === "radar") return radarComparePublishers(year);
   return barBytitle(year, metric);
 }
 
@@ -69,7 +63,7 @@ function buildConfig(type, { year, title, metric }) {
 function barBytitle(genre, metric) {
   const rows = chartData.filter(r => r.genre === genre);
   const labels = rows.map(r => r.title);
-  const values = rows.map(r => r.metric);
+  const values = rows.map(r => r[metric]);
   return {
     type: "bar",
     data: {
@@ -95,102 +89,153 @@ function barBytitle(genre, metric) {
 
 
 // Task B: LINE — trend over time for one title (2 datasets)
-function lineOverTime(revenueUSD, metric) {
-  console.log(revenuUSD, metric)
-  const rows = chartData.filter(r => r.plublisher === publisher);
+function lineOverTime(year, metric) {
+  const rows = chartData.filter(r => r.title === titleSelect.value).sort((a, b) => a.year - b.year);
 
   const labels = rows.map(r => r.year);
+const values = rows.map(r => r[metric]);
 
-  const datasets = chartData.map(m => ({
-    label: m.year,
-    data: rows.map(r => r[m])
-  
-  }));
 
   return {
     type: "line",
-    data: { labels, datasets },
+    data: { labels, datasets: [{
+      label: `${metric} over time for ${titleSelect.value}`,
+      data: values,
+    }] },
     options: {
       responsive: true,
       plugins: {
-        title: { display: true, text: `Trends over time: ${title}` }
+        title: { display: true, text: `Trends over time: ${titleSelect.value}` }
       },
       scales: {
         y: { title: { display: true, text: metric } },
-        x: { title: { display: true, text: "Title" } }
+        x: { title: { display: true, text: "Year" } }
       }
     }
   };
+  };
+
+// SCATTER — Review Score vs. Sales
+function scatterreviewScoreVsRevenue(title) {
+  
+  const rows = chartData.filter(r => r.title === titleSelect.value);
+const points = rows.map(r => ({ x: r.reviewScore, y: r.revenueUSD }));
+
+if(rows.length === 0) {
+  alert("No data found.");
+  return;
 }
-
-// SCATTER — relationship between temperature and metric
-function scattermetricVsTemp(title) {
-  const rows = chartData.filter(r => r.title === title);
-
-  const points = rows.map(r => ({ x: r.reviewScore, y: r.metric }));
 
   return {
     type: "scatter",
     data: {
       datasets: [{
-        label: `metric vs Temp (${title})`,
+        label: `reviewScore vs revenue (${titleSelect.value})`,
         data: points
       }]
     },
     options: {
+      responsive: true,
       plugins: {
-        title: { display: true, text: `Does reviewScore affect metric? (${title})` }
+        title: { display: true, text: `Review Score vs Revenue for (${titleSelect.value})` }
       },
       scales: {
-        x: { title: { display: true, text: "review scores" } },
-        y: { title: { display: true, text: "metric" } }
+        x: { title: { display: true, text: "Review Scores" } },
+        y: { title: { display: true, text: "Revenue (USD)" } }
       }
     }
   };
 }
 
-// DOUGHNUT — metric vs revenueUSD share for one title + year
-function doughnutrevenueUSDandmetric(year, title) {
-  const row = chartData.find(r => r.year === Number(year) && r.title === title);
+// DOUGHNUT — Region vs revenueUSD share for one title + year
+function doughnutRevenueByRegion(year, title) {
+  const rows = chartData.filter(r => r.year === Number(year) && r.title === title);
 
-if (!row) {
+if (rows.length === 0) {
    alert("No data found.");
    return;
 }
 
+const labels = rows.map(r => r.region);
+const values = rows.map(r => r.revenueUSD);
+
   return {
     type: "doughnut",
     data: {
-      labels: ["metric", "Revenue (USD)"],
-      datasets: [{ label: "metric vs Revenue", data: [[row.metric], row.revenueUSD] }]
+      labels,
+      datasets: [{ label: "Revenue per Region", data: values }]
     },
     options: {
       responsive: true,
       plugins: {
-        title: { display: true, text: `metric vs Revenue: ${title} (${year})` }
+        title: { display: true, text: `Revenue per Region: ${title} (${year})` }
       }
     }
   };
 }
 
-// RADAR — compare titles across multiple metrics for one year
-function radarComparetitles(year) {
-  const rows = chartData.filter(r => r.year === Number(year));
+// RADAR — compare publishers across multiple metrics for one year
+function radarComparePublishers(year) {
 
-  const metrics = ["metric", "revenueUSD", "region", "metric"];
-  const labels = metrics;
+  const rows = chartData.filter(r =>
+    r.year === Number(year)
+  );
 
-  const datasets = rows.map(r => ({
-    label: r.title,
-    data: metrics.map(m => r[m])
-  }));
+  if (rows.length === 0) {
+    alert("No data found.");
+    return;
+  }
+
+  // Get unique publishers
+  const publishers = [...new Set(rows.map(r => r.publisher))];
+
+  const labels = [
+    "Total Revenue",
+    "Total Units (M)",
+    "Avg Review Score",
+    "Avg Price"
+  ];
+
+  const datasets = publishers.map(pub => {
+
+    const pubRows = rows.filter(r => r.publisher === pub);
+
+    const totalRevenue =
+      pubRows.reduce((sum, r) => sum + r.revenueUSD, 0);
+
+    const totalUnits =
+      pubRows.reduce((sum, r) => sum + r.unitsM, 0);
+
+    const avgReview =
+      pubRows.reduce((sum, r) => sum + r.reviewScore, 0) / pubRows.length;
+
+    const avgPrice =
+      pubRows.reduce((sum, r) => sum + r.priceUSD, 0) / pubRows.length;
+
+    return {
+      label: pub,
+      data: [
+        totalRevenue,
+        totalUnits,
+        avgReview,
+        avgPrice
+      ]
+    };
+  });
 
   return {
     type: "radar",
-    data: { labels, datasets },
+    data: {
+      labels,
+      datasets
+    },
     options: {
+      responsive: true,
       plugins: {
-        title: { display: true, text: `Multi-metric comparison (${year})` }
+        title: {
+          display: true,
+          text: `Publisher Comparison (${year})`
+        }
       }
     }
   };
